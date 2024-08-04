@@ -40,6 +40,6 @@ RUN php artisan optimize:clear \
     && php artisan filament:optimize
 
 # Exponer el puerto 8080 y usa el servidor embebido de PHP para correr la aplicación
-CMD php artisan serve --host=0.0.0.0 --port=80
+CMD php artisan serve --host=0.0.0.0 --port=8080
 
 EXPOSE 8080
