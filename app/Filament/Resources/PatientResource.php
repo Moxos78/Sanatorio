@@ -15,6 +15,8 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Filament\Tables\Actions\ActionGroup;
+use Filament\Tables\Filters\SelectFilter;
 
 class PatientResource extends Resource
 {
@@ -37,7 +39,7 @@ class PatientResource extends Resource
                 ->schema([
                     Forms\Components\TextInput::make('code')
                         ->translateLabel()
-                        ->unique()
+                        ->unique(ignoreRecord: true)
                         ->required()
                         ->maxLength(255),
                     Forms\Components\TextInput::make('name')
@@ -115,6 +117,19 @@ class PatientResource extends Resource
                     ->translateLabel()
                     ->boolean()
                     ->sortable(),
+                Tables\Columns\TextColumn::make('latestPatientRecord.patient_state')
+                    ->translateLabel()
+                    ->label(__('Patient State'))
+                    ->badge()
+                    ->colors([
+                        'success' => __('patient_states.stable'),
+                        'info' => __('patient_states.severe_stable'),
+                        'warning' => __('patient_states.severe_unstable'),
+                        'danger' => __('patient_states.critical'),
+                    ])
+                    ->getStateUsing(function ($record) {
+                        return $record->latestPatientRecord ? __('patient_states.' . $record->latestPatientRecord->patient_state) : '-';
+                    }),
                 Tables\Columns\TextColumn::make('created_at')
                     ->translateLabel()
                     ->dateTime()
@@ -133,9 +148,28 @@ class PatientResource extends Resource
             ])
             ->filters([
                 Tables\Filters\TrashedFilter::make(),
+                SelectFilter::make('patient_state')
+                ->label(__('Patient State'))
+                ->options([
+                    'stable' => __('patient_states.stable'),
+                    'severe_stable' => __('patient_states.severe_stable'),
+                    'severe_unstable' => __('patient_states.severe_unstable'),
+                    'critical' => __('patient_states.critical'),
+                ])
+                ->query(function (Builder $query, array $data) {
+                    // Verifica si el estado está seleccionado
+                    if (isset($data['value']) && $data['value'] !== null) {
+                        $query->whereHas('latestPatientRecord', function (Builder $subQuery) use ($data) {
+                            $subQuery->where('patient_state', $data['value']);
+                        });
+                    }
+                })
+                ->translateLabel(),
             ])
             ->actions([
+                ActionGroup::make([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make(),
                 Tables\Actions\Action::make('viewPatientRecord')
                     ->label('View patient record')
                     ->translateLabel()
@@ -146,6 +180,7 @@ class PatientResource extends Resource
                     ->label('Create Patient Record')
                     ->translateLabel()
                     ->url(fn (Patient $record) => route('filament.admin.resources.patient-records.create', ['patient_id' => $record->id])),
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -168,6 +203,7 @@ class PatientResource extends Resource
         return [
             'index' => Pages\ListPatients::route('/'),
             'create' => Pages\CreatePatient::route('/create'),
+            'view' => Pages\ViewPatient::route('/{record}'),
             'edit' => Pages\EditPatient::route('/{record}/edit'),
         ];
     }

@@ -26,13 +26,15 @@ class PdfController extends Controller
                 'number_prescription' => $patientRecord->id,
                 'date_consulting' => Carbon::parse($patientRecord->consultation_date)->translatedFormat('l, d F Y'),
                 'patient_name' => $patientRecord->patient->name . ' ' . $patientRecord->patient->lastname,
-                'rest_days' => implode(', ', $restDays),
-                'rest_schedule' => $patientRecord->repose_schedules,
+                'rest_days' => $restDays? implode(', ', $restDays): '-',
+                'rest_schedule' => $patientRecord->repose_start_time. ' - '.$patientRecord->repose_end_time ,
                 'recommendations' => $patientRecord->recommendations,
                 'next_consultation' => Carbon::parse($patientRecord->reconsultation_date)->translatedFormat('l, d F Y'),
-                'clinic_address' => __('123 Fake Street, City'),
-                'clinic_phone' => __('+123 456 7890'),
-                'clinic_email' => __('contact@fakemail.com')
+                'operation' => $patientRecord->operation_date ?
+                Carbon::parse($patientRecord->operation_date)->translatedFormat('l, d F Y h:i:s A') : '-',
+                'clinic_address' => __('Pampa Galana'),
+                'clinic_phone' => __('+591 72978758'),
+                'clinic_email' => __('fcalvariodelmilagro@gmail.com')
             ];
 
         $pdf = Pdf::loadView('document', $data);

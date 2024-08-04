@@ -16,7 +16,10 @@ return new class extends Migration
             $table->string('description_case');
             $table->date('consultation_date');
             $table->date('reconsultation_date');
-            $table->time('repose_schedules')->nullable();
+            //$table->time('repose_schedules')->nullable();
+            $table->time('repose_start_time')->nullable();
+            $table->time('repose_end_time')->nullable();
+
             $table->dateTime('operation_date')->nullable();
             $table->json('repose_days')->nullable();
             $table->string('recommendations');
@@ -25,6 +28,10 @@ return new class extends Migration
             $table->foreign('patient_id')->references('id')->on('patients');
             $table->timestamps();
             $table->softDeletes();
+
+
+
+
         });
     }
 

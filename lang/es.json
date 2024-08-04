@@ -248,18 +248,20 @@
     "Patient_Name": "Nombre del Paciente",
     "Rest_Days": "Días de Reposo",
     "Rest_Schedule": "Horario de Reposo",
-
     "Next_Consultation": "Próxima Consulta",
     "Footer_Message": "Si algo no va bien en tu vida, está bien llorar. Recuerda que las lágrimas son oraciones que llegan a Dios cuando no puedes hablar.",
-
     "Phone": "Teléfono",
-
-    "Clinic Logo": "Logo de la Clínica"
-
-
-
-
-
-
+    "Clinic Logo": "Logo de la Clínica",
+    "Print": "Imprimir",
+    "Repose Schedules" : "Horarios de reposo",
+    "Start Time" : "Hora de inicio",
+    "End Time" : "Hora de finalización",
+    "Operation":"Operación",
+    "Patient State" :"Estado paciente",
+    "new_patients_per_month" : "Pacientes Nuevos por Mes",
+    "New Patients": "Pacientes Nuevos",
+    "patient_status_distribution" : "Distribución de estados de pacientes",
+    "consultations_per_month" : "Consultas por Mes",
+    "scheduled_consultations_today": "Consultas Programadas para Hoy"
 
 }

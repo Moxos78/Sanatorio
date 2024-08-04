@@ -14,9 +14,10 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
-
 use function PHPUnit\Framework\isNull;
-
+use Illuminate\Database\Eloquent\Model;
+use Filament\Tables\Actions\ActionGroup;
+use Carbon\Carbon;
 class PatientRecordResource extends Resource
 {
     protected static ?string $model = PatientRecord::class;
@@ -42,10 +43,19 @@ class PatientRecordResource extends Resource
                         Forms\Components\Section::make()
                             ->schema([
                                 Forms\Components\Select::make('patient_id')
-                                ->relationship('patient', 'name')
+
+                                ->relationship(
+                                    name: 'patient',
+                                    //titleAttribute:fn (Model $record) => "{$record->name} {$record->lastname}",
+                                    modifyQueryUsing: fn (Builder $query) => $query->orderBy('name')->orderBy('lastname'),
+                                )
+                                ->getOptionLabelFromRecordUsing(fn (Model $record) => "{$record->name} {$record->lastname}")
+                                ->searchable(['name', 'lastname'])
+                                ->preload()
+
+                                //->relationship('patient', 'name')
                                 ->default(request()->get('patient_id'))
-                                ->options(Patient::all()->pluck('name', 'id'))
-                                //->disabled(false)
+                                //->options(Patient::all()->pluck('name', 'id'))
                                 ->disabled(function() {
                                     if ((request()->get('patient_id'))) {
                                         return true;
@@ -53,15 +63,13 @@ class PatientRecordResource extends Resource
                                     else {
                                         return false;
                                     }
-                                    //return request()->get('patient_id') ?? false;
+
                                 })
-                                ->disabled(fn($livewire) => $livewire instanceof \Filament\Resources\Pages\EditRecord)
-                                //->disabled(fn($get) => $get('patient_id') != null || !isset($state))
-                                //->setCondition(fn($state) => $state === null, 'disabled')
+                                //->searchable()
                                 ->translateLabel()
                                 ->required()
-                            ])
-                            ->columns(1),
+                            ]),
+
                         Forms\Components\Section::make(__('Case Description'))
                             ->schema([
                                 Forms\Components\RichEditor::make('description_case')
@@ -70,8 +78,8 @@ class PatientRecordResource extends Resource
                                 ->columnSpanFull()
                                 ->maxLength(255)
 
-                            ])
-                            ->columns(1),
+                            ]),
+
 
                         Forms\Components\Section::make(__('Repose Information'))
                             ->schema([
@@ -85,11 +93,22 @@ class PatientRecordResource extends Resource
                                         'friday' => __('days.friday'),
                                         'saturday' => __('days.saturday'),
                                         'sunday' => __('days.sunday'),
-                                    ]),
-                                Forms\Components\TimePicker::make('repose_schedules')
-                                    ->translateLabel(),
+                                    ])
+                                    ->columns(5)
+                                    ->gridDirection('row'),
+                                Forms\Components\Fieldset::make(__('Repose Schedules'))
+                                    ->schema([
+                                        Forms\Components\TimePicker::make('repose_start_time')
+                                            ->label(__('Start Time'))
+                                            ->withoutSeconds(),
+                                        Forms\Components\TimePicker::make('repose_end_time')
+                                            ->label(__('End Time'))
+                                            ->withoutSeconds(),
+
+                                    ])
+                                    ->columns(2),
                             ])
-                            ->columns(2),
+
                     ])
                     ->columnSpan(['lg' => 2]),
 
@@ -99,12 +118,14 @@ class PatientRecordResource extends Resource
                             ->schema([
                                 Forms\Components\DatePicker::make('consultation_date')
                                     ->translateLabel()
+                                    ->default(now())
                                     ->required(),
                                 Forms\Components\DatePicker::make('reconsultation_date')
                                     ->translateLabel()
                                     ->required(),
                                 Forms\Components\DateTimePicker::make('operation_date')
-                                    ->translateLabel(),
+                                    ->translateLabel()
+                                    ->withoutSeconds(),
                                 ])
                                 ->columns(1),
 
@@ -136,9 +157,13 @@ class PatientRecordResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('patient.name')
-                    ->numeric()
+
+                    ->getStateUsing(fn ($record) => "{$record->patient->name} {$record->patient->lastname}")
                     ->translateLabel()
-                    ->sortable(),
+                    ->sortable()
+                    ->searchable(),
+
+
 
 
                 Tables\Columns\TextColumn::make('consultation_date')
@@ -149,8 +174,6 @@ class PatientRecordResource extends Resource
                     ->translateLabel()
                     ->date()
                     ->sortable(),
-                Tables\Columns\TextColumn::make('repose_schedules')
-                    ->translateLabel(),
                 Tables\Columns\TextColumn::make('operation_date')
                     ->translateLabel()
                     ->dateTime()
@@ -188,14 +211,37 @@ class PatientRecordResource extends Resource
             ])
             ->filters([
                 SelectFilter::make('patient_id')
-                    ->options(fn (): array => Patient::query()->pluck('name', 'id')->all()),
-
+                ->relationship(
+                    name: 'patient',
+                    titleAttribute: null,
+                    modifyQueryUsing: fn (Builder $query) => $query->orderBy('name')->orderBy('lastname'),
+                )
+                ->getOptionLabelFromRecordUsing(fn (Model $record) => "{$record->name} {$record->lastname}")
+                ->searchable()
+                ->preload(),
+                SelectFilter::make('patient_state')
+                    ->options([
+                        'stable' => __('patient_states.stable'),
+                        'severe_stable' => __('patient_states.severe_stable'),
+                        'severe_unstable' => __('patient_states.severe_unstable'),
+                        'critical' => __('patient_states.critical'),
+                    ])
+                    ->translateLabel(),
 
 
                 Tables\Filters\TrashedFilter::make(),
             ])
             ->actions([
+                ActionGroup::make([
                 Tables\Actions\EditAction::make(),
+                Tables\Actions\ViewAction::make(),
+                Tables\Actions\Action::make('Print')
+                    ->translateLabel()
+                    ->color('success')
+                    ->icon('heroicon-o-printer')
+                    ->url(fn ($record) => route('generate', ['id' => $record->id]))
+                    ->openUrlInNewTab()
+                ]),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
@@ -203,7 +249,8 @@ class PatientRecordResource extends Resource
                     Tables\Actions\ForceDeleteBulkAction::make(),
                     Tables\Actions\RestoreBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->defaultSort('created_at', 'desc');
     }
 
     public static function getRelations(): array
@@ -218,6 +265,7 @@ class PatientRecordResource extends Resource
         return [
             'index' => Pages\ListPatientRecords::route('/'),
             'create' => Pages\CreatePatientRecord::route('/create'),
+            'view' => Pages\ViewPatientRecord::route('/{record}'),
             'edit' => Pages\EditPatientRecord::route('/{record}/edit'),
         ];
     }
@@ -228,5 +276,15 @@ class PatientRecordResource extends Resource
             ->withoutGlobalScopes([
                 SoftDeletingScope::class,
             ]);
+    }
+
+    public static function getTableQuery(): Builder
+    {
+        // Obtener la fecha de hoy
+        $today = Carbon::today();
+
+        return PatientRecord::query()
+            ->whereDate('reconsultation_date', $today)
+            ->with('patient'); // Incluye relación con Patient si necesitas mostrar más detalles
     }
 }

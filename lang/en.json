@@ -12,5 +12,11 @@
     "Address": "Address",
     "Phone": "Phone",
     "Email": "Email",
-    "Clinic Logo": "Clinic Logo"
+    "Clinic Logo": "Clinic Logo",
+    "Operation":"Operation",
+    "new_patients_per_month" : "New Patients Per Month",
+    "patient_status_distribution" : "Patient status distribution",
+    "consultations_per_month" : "Consultations per Month",
+    "scheduled_consultations_today": "Scheduled Consultations Today"
+
 }
